@@ -1,0 +1,39 @@
+CREATE PROCEDURE pr_GetOrderSummary
+    @StartDate DATETIME,
+    @EndDate DATETIME,
+    @EmployeeID INT = NULL,
+    @CustomerID VARCHAR(5) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+   
+    SELECT
+        CONCAT(E.TitleOfCourtesy, ' ', E.FirstName, ' ', E.LastName) AS EmployeeFullName,
+        S.CompanyName AS ShipperCompanyName,
+        C.CompanyName AS CustomerCompanyName,
+        COUNT(DISTINCT O.OrderID) AS NumberOfOrders,
+        CAST(O.OrderDate AS DATE) AS [Date],
+        SUM(O.Freight) AS TotalFreightCost,
+        COUNT(DISTINCT OD.ProductID) AS NumberOfDifferentProducts,
+        SUM(OD.UnitPrice * OD.Quantity) AS TotalOrderValue
+    FROM
+        Orders O
+        INNER JOIN Employees E ON O.EmployeeID = E.EmployeeID
+        INNER JOIN Shippers S ON O.ShipVia = S.ShipperID
+        INNER JOIN Customers C ON O.CustomerID = C.CustomerID
+        INNER JOIN [Order Details] OD ON O.OrderID = OD.OrderID
+    WHERE
+        (@EmployeeID IS NULL OR O.EmployeeID = @EmployeeID)
+        AND (@CustomerID IS NULL OR O.CustomerID = @CustomerID)
+        AND O.OrderDate >= @StartDate
+        AND O.OrderDate <= @EndDate
+    GROUP BY
+        CAST(O.OrderDate AS DATE),
+        E.EmployeeID,
+        CONCAT(E.TitleOfCourtesy, ' ', E.FirstName, ' ', E.LastName),
+        S.ShipperID,
+        S.CompanyName,
+        C.CustomerID,
+        C.CompanyName;
+END
+
